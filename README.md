@@ -1,8 +1,8 @@
-# README
+# FAST Security Testing via Azure DevOps
 
-[![Build Status](https://dev.azure.com/apetriv/FAST/_apis/build/status/416e64726579.fast-example-azure-dvwa-integration?branchName=master)](https://dev.azure.com/apetriv/FAST/_build/latest?definitionId=4&branchName=master)
+[![Build Status](https://dev.azure.com/apetriv/FAST/_apis/build/status/FAST?branchName=master)](https://dev.azure.com/apetriv/FAST/_build/latest?definitionId=6&branchName=master)
 
-This is an example of Wallarm FAST running security tests in the Azure DevOps pipeline. The target application is a DVWA.
+This is an example of Wallarm FAST running security tests in the Azure DevOps pipeline. The target application is DVWA.
 
 ## How to reproduce example
 

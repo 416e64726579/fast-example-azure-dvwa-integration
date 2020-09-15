@@ -2,6 +2,9 @@ resources:
   containers:
   - container: docker_compose
     image: tmaier/docker-compose:17.03
+variables:
+  BUILD_ID: $(Build.BuildId)
+  CI_MODE: recording
 
 pool:
   vmImage: 'ubuntu-16.04'
@@ -12,7 +15,7 @@ stages:
   - job: build
     steps:
     - script: docker-compose build
-      displayName: 'Building networking and images'
+      displayName: 'Building networks and images'
 
 - stage: testing
   dependsOn: building
@@ -20,12 +23,44 @@ stages:
   jobs:
   - job: tests
     steps:
-    - script: docker-compose up -d dvwa fast selenium
-      displayName: 'Containers coming up'
-    - script: docker-compose run --service-ports test
-      displayName: 'Recording tests'
-    - script: docker-compose run -e CI_MODE=testing -e TEST_RUN_URI=http://dvwa:80 fast
+    - task: DockerCompose@0
+      displayName: Run a FAST service
+      inputs:
+        action: Run a specific service
+        dockerComposeFile: docker-compose.yml
+        projectName: $(Build.Repository.Name)
+        qualifyImageNames: true
+        serviceName: fast
+        detached: true
+    - task: DockerCompose@0
+      displayName: Run a nowasp application
+      inputs:
+        action: Run a specific service
+        dockerComposeFile: docker-compose.yml
+        projectName: $(Build.Repository.Name)
+        qualifyImageNames: true
+        serviceName: nowasp
+        detached: true
+    - task: DockerCompose@0
+      displayName: 'Recording integration tests'
+      inputs:
+        containerregistrytype: 'Container Registry'
+        dockerComposeFile: 'docker-compose.yml'
+        action: 'Run a Docker Compose command'
+        dockerComposeCommand: 'run --service-ports postman'
+    - script: sleep 10
+      displayName: 'Wait before start'
+    - script: |
+        CI_MODE=testing TEST_RUN_URI='http://nowasp:80' docker-compose up --scale fast=4 --scale nowasp=4 fast nowasp | ./output.sh
       displayName: 'Running security tests'
+      env:
+        CI_MODE: testing
+        TEST_RUN_URI: http://nowasp:80
+    - task: PublishPipelineArtifact@1
+      condition: always()
+      inputs:
+        targetPath: /opt/reports
+        artifactName: reports
 
 - stage: cleaning
   dependsOn:
@@ -35,4 +70,10 @@ stages:
   jobs:
   - job: cleanup
     steps:
-    - script: docker-compose down
+    - task: DockerCompose@0
+      displayName: 'Clean docker containers and networks'
+      inputs:
+        containerregistrytype: 'Container Registry'
+        dockerComposeFile: 'docker-compose.yml'
+        action: 'Run a Docker Compose command'
+        dockerComposeCommand: down
